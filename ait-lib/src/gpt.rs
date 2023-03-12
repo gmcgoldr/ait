@@ -1,0 +1,149 @@
+//! Interact with OpenAI's GPT models.
+
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, skip_serializing_none};
+use tap::Pipe;
+use thiserror;
+
+use crate::embedding::Embedding;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("failed to request generation")]
+    InvalidGenerate,
+    #[error("failed to request embedding")]
+    InvalidEmbedding,
+    #[error("failed to serailize embedding")]
+    CantSerialize,
+    #[error("failed to de-serailize embedding")]
+    CantDeserialize,
+}
+
+type Result<T> = core::result::Result<T, Error>;
+
+#[derive(Debug, Serialize, Deserialize)]
+enum TextCompletionObjectValue {
+    #[serde(rename = "text_completion")]
+    TextCompletion,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum FinishReason {
+    Stop,
+    Length,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TextCompletionChoice {
+    text: String,
+    finish_reason: FinishReason,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TextCompletionResponse {
+    object: TextCompletionObjectValue,
+    choices: Vec<TextCompletionChoice>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum TextCompletionModel {
+    #[serde(rename = "text-davinci-003")]
+    GptDavinci003,
+}
+
+#[derive(Debug, Serialize)]
+#[skip_serializing_none]
+struct TextCompletionRequest<'a> {
+    model: TextCompletionModel,
+    prompt: &'a str,
+    max_tokens: Option<u16>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum ListObjectValue {
+    #[serde(rename = "list")]
+    List,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum EmbeddingObjectValue {
+    #[serde(rename = "embedding")]
+    Embedding,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum EmbeddingModel {
+    #[serde(rename = "text-embedding-ada-002")]
+    TextEmbeddingAda002,
+}
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize)]
+struct EmbeddingData {
+    #[serde_as(as = "[_; 1536]")]
+    embedding: [f32; 1536],
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EmbeddingResponse {
+    object: ListObjectValue,
+    data: Vec<EmbeddingData>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EmbeddingRequest<'a> {
+    model: EmbeddingModel,
+    input: &'a str,
+}
+
+/// Generate a continuation for the given `prompt`.
+pub async fn generate(token: &str, prompt: &str) -> Result<String> {
+    reqwest::Client::new()
+        .post("https://api.openai.com/v1/completions")
+        .bearer_auth(token)
+        .json(&TextCompletionRequest {
+            model: TextCompletionModel::GptDavinci003,
+            prompt,
+            max_tokens: Some(2048),
+        })
+        .send()
+        .await
+        .map_err(|_| Error::InvalidGenerate)?
+        .json::<TextCompletionResponse>()
+        .await
+        .ok()
+        .and_then(|x| x.choices.into_iter().next().map(|x| x.text))
+        .ok_or(Error::InvalidGenerate)?
+        .pipe(Ok)
+}
+
+pub const fn embedding_model_size(model: EmbeddingModel) -> usize {
+    match model {
+        EmbeddingModel::TextEmbeddingAda002 => 1536,
+    }
+}
+
+pub const EMBED_DIMS: usize = embedding_model_size(EmbeddingModel::TextEmbeddingAda002);
+pub type GptEmbedding = Embedding<EMBED_DIMS>;
+
+/// Generate an embedding for the given `text`.
+pub async fn embed(token: &str, text: &str) -> Result<GptEmbedding> {
+    reqwest::Client::new()
+        .post("https://api.openai.com/v1/embeddings")
+        .bearer_auth(token)
+        .json(&EmbeddingRequest {
+            model: EmbeddingModel::TextEmbeddingAda002,
+            input: text,
+        })
+        .send()
+        .await
+        .map_err(|_| Error::InvalidEmbedding)?
+        .json::<EmbeddingResponse>()
+        .await
+        .ok()
+        .and_then(|x| x.data.into_iter().next())
+        .map(|x| GptEmbedding::new(text, x.embedding))
+        .ok_or(Error::InvalidEmbedding)?
+        .pipe(Ok)
+}
