@@ -1,6 +1,12 @@
 {
   "name": "ait-ui",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gmcgoldr/ait"
+  },
+  "description": "The Ait project",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
