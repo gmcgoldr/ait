@@ -4,6 +4,7 @@ import { Button } from "@mui/material";
 import { useState } from "react";
 
 export interface WriteQueryProps {
+  disabled: boolean;
   submitQuery: (message: string) => void;
 }
 
@@ -24,7 +25,12 @@ export function WriteQuery(props: WriteQueryProps) {
         rows={4}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <Button variant="contained" sx={{ mt: 1 }} onClick={send}>
+      <Button
+        variant="contained"
+        sx={{ mt: 1 }}
+        onClick={send}
+        disabled={props.disabled}
+      >
         Submit
       </Button>
     </Box>
