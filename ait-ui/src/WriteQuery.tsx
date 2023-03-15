@@ -11,10 +11,10 @@ export interface WriteQueryProps {
 export function WriteQuery(props: WriteQueryProps) {
   function send(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    if (query != null) props.submitQuery(query);
+    if (query) props.submitQuery(query);
   }
 
-  const [query, setQuery] = useState<undefined | string>();
+  const [query, setQuery] = useState<string>("");
 
   return (
     <Box sx={{ my: 4 }}>
@@ -23,6 +23,7 @@ export function WriteQuery(props: WriteQueryProps) {
         fullWidth
         multiline
         rows={4}
+        value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       <Button

@@ -1,28 +1,26 @@
 import TextField from "@mui/material/TextField";
-import Box from "@mui/material/Box";
 import { Button, FormGroup } from "@mui/material";
 import { useState } from "react";
-import { Embedded, SetState } from "./utils";
+import { SetState } from "./utils";
 import Grid from "@mui/material/Unstable_Grid2";
 
 export interface SettingsProps {
   setToken: SetState<string | undefined>;
-  clearHistory: () => void;
+  resetHistory: () => void;
 }
 
 export function Settings(props: SettingsProps) {
   function useToken(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    if (!token) return;
-    props.setToken(token);
+    if (token) props.setToken(token);
   }
 
-  function clearHistory(e: React.MouseEvent<HTMLButtonElement>) {
+  function resetHistory(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    props.clearHistory();
+    props.resetHistory();
   }
 
-  const [token, setToken] = useState<string | undefined>();
+  const [token, setToken] = useState<string>("");
 
   return (
     <>
@@ -44,8 +42,8 @@ export function Settings(props: SettingsProps) {
           </Button>
         </Grid>
       </Grid>
-      <Button variant="contained" sx={{ my: 2 }} onClick={clearHistory}>
-        Clear History
+      <Button variant="contained" sx={{ my: 2 }} onClick={resetHistory}>
+        Reset History
       </Button>
     </>
   );

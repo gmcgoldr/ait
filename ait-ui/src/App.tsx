@@ -1,33 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { WriteQuery } from "./WriteQuery";
 import { EditContext } from "./EditContext";
 import { EditResponse } from "./EditResponse";
 import { Container } from "@mui/material";
 import { MessageHistory } from "./MessageHistory";
 import { Embedded } from "./utils";
-import * as Ait from "ait-lib";
 import { Settings } from "./Settings";
+import defaultHistory from "./defaultHistory.json";
+import * as Ait from "ait-lib";
 
-export interface AppProps {
-  history: Ait.History | undefined;
+function bootstrapHistory(): Ait.History {
+  if (!window.localStorage.getItem("history"))
+    window.localStorage.setItem("history", defaultHistory);
+  return Ait.History.load();
 }
 
+export interface AppProps {}
+
 export function App(props: AppProps) {
-  let [messages, setMessages] = useState<string[]>([]);
+  let [history, setHistory] = useState<Ait.History>(bootstrapHistory());
+  let [messages, setMessages] = useState<[string, string][]>([]);
   let [query, setQuery] = useState<Embedded>();
   let [context, setContext] = useState<string>();
   let [response, setResponse] = useState<string>();
   let [token, setToken] = useState<string>();
 
-  if (props.history == null) return null;
-  const history = props.history;
+  function onExit() {
+    if (document.visibilityState === "hidden") {
+      (async () => {
+        history.store();
+      })().catch((x) => console.error(x));
+    }
+  }
+
+  useEffect(() => {
+    setMessages(history.get_last_messages(4));
+    addEventListener("visibilitychange", onExit);
+    return function cleanup() {
+      removeEventListener("visibilitychange", onExit);
+    };
+  }, []);
+
+  useEffect(() => {
+    setMessages(history.get_last_messages(4));
+  }, [history]);
 
   function submitQuery(query: string) {
     (async () => {
       if (token == null) throw Error("tried to submit without a token");
       query = query.trim();
       const embedding = await Ait.gpt_embed(token, query);
-      const context = history.related_experiences(embedding, 4);
+      const context = history.related_experiences(embedding, 3);
       setQuery({ text: query, embedding });
       setContext(context);
     })().catch((x) => console.error(x));
@@ -44,16 +67,17 @@ export function App(props: AppProps) {
 
   function submitResponse(query: Embedded, context: string, response: string) {
     (async () => {
-      history.add_experience(query.text, response, query.embedding);
-      setMessages((messages) => [...messages, query.text, response]);
+      await history.add_experience(query.text, response, query.embedding);
+      setMessages(history.get_last_messages(4));
       setResponse(undefined);
       setContext(undefined);
       setQuery(undefined);
     })().catch((x) => console.error(x));
   }
 
-  function clearHistory() {
-    history.clear();
+  function resetHistory() {
+    window.localStorage.removeItem("history");
+    setHistory(bootstrapHistory());
   }
 
   return (
@@ -80,7 +104,7 @@ export function App(props: AppProps) {
           />
         ) : null}
         <h2>Settings</h2>
-        <Settings setToken={setToken} clearHistory={clearHistory} />
+        <Settings setToken={setToken} resetHistory={resetHistory} />
       </>
     </Container>
   );

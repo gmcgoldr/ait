@@ -14,21 +14,16 @@ export interface EditResponseProps {
 export function EditResponse(props: EditResponseProps) {
   function send(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    props.submitResponse(
-      props.query,
-      props.context,
-      response ?? props.response
-    );
+    props.submitResponse(props.query, props.context, response);
   }
 
-  const [response, setResponse] = useState<undefined | string>();
+  const [response, setResponse] = useState<string>(props.response);
 
   return (
     <Box sx={{ my: 4 }}>
       <TextField
         label="Response"
         value={response}
-        defaultValue={props.response}
         fullWidth
         multiline
         rows={4}

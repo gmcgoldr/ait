@@ -1,12 +1,13 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::iter::FromIterator;
 
 use crate::experience::Experience;
 use crate::gpt::{GptEmbedding, EMBED_DIMS};
 use crate::utils::{new_text_id, TextId};
 use base64::{engine::general_purpose, Engine};
-use js_sys::{JsString, Uint8Array};
+use js_sys::{Array, JsString, Uint8Array};
 use serde::{Deserialize, Serialize};
 use tap::Pipe;
 use wasm_bindgen::prelude::*;
@@ -24,6 +25,8 @@ pub enum Error {
     CantAccessExperience,
     #[error("failed to parse the embedding")]
     InvalidEmbedding,
+    #[error("failed to build messages")]
+    CantBuildMessages,
 }
 
 impl From<Error> for JsValue {
@@ -39,13 +42,15 @@ type GptExperience = Experience<EMBED_DIMS>;
 #[wasm_bindgen]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct History {
-    experiences: HashMap<TextId, GptExperience>,
+    experiences: Vec<GptExperience>,
+    text_id_to_idx: HashMap<TextId, usize>,
 }
 
 impl History {
     fn new() -> History {
         History {
-            experiences: HashMap::new(),
+            experiences: Vec::new(),
+            text_id_to_idx: HashMap::new(),
         }
     }
 }
@@ -101,21 +106,23 @@ impl History {
         let embedding =
             GptEmbedding::deserialize(&embedding.to_vec()).map_err(|_| Error::InvalidEmbedding)?;
         let id = new_text_id(&[query, response]);
-        if let Entry::Vacant(entry) = self.experiences.entry(id.clone()) {
-            entry.insert(Experience::new(
+        if let Entry::Vacant(entry) = self.text_id_to_idx.entry(id.clone()) {
+            self.experiences.push(Experience::new(
                 query.to_string(),
                 response.to_string(),
                 embedding,
             ));
+            entry.insert(self.experiences.len());
         }
         Ok(())
     }
 
     pub fn update_experience(&mut self, id: &Uint8Array, is_positive: bool) -> Result<()> {
-        self.experiences
-            .get_mut(&text_id_from_js(id)?)
-            .ok_or(Error::CantAccessExperience)?
-            .pipe(|x| x.increment(is_positive));
+        let idx = self
+            .text_id_to_idx
+            .get(&text_id_from_js(id)?)
+            .ok_or(Error::CantAccessExperience)?;
+        self.experiences[*idx].increment(is_positive);
         Ok(())
     }
 
@@ -124,7 +131,7 @@ impl History {
             GptEmbedding::deserialize(&embedding.to_vec()).map_err(|_| Error::InvalidEmbedding)?;
         let mut scored: Vec<(f32, &GptExperience)> = self
             .experiences
-            .values()
+            .iter()
             .map(|x| (x.embedding().cosine_distance(&embedding), x))
             .collect();
         scored.sort_by(|a, b| a.0.total_cmp(&b.0));
@@ -132,14 +139,26 @@ impl History {
         let related = scored
             .into_iter()
             .take(num)
-            .map(|(_, x)| format!("# Query\n\n{}\n\n# Response\n\n{}", x.query(), x.response(),))
+            .map(|(_, x)| format!("# Query\n\n{}\n\n# Response\n\n{}", x.query(), x.response()))
             .collect::<Vec<String>>()
             .as_slice()
             .join("\n\n");
         Ok(JsString::from(related))
     }
 
-    pub fn clear(&mut self) {
-        self.experiences.clear();
+    pub fn get_last_messages(&self, num: usize) -> Array {
+        self.experiences
+            .iter()
+            .rev()
+            .take(num)
+            .map(|x| {
+                [
+                    x.query().pipe(JsString::from),
+                    x.response().pipe(JsString::from),
+                ]
+                .pipe(Array::from_iter)
+            })
+            .rev()
+            .pipe(Array::from_iter)
     }
 }

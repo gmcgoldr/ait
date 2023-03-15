@@ -13,16 +13,15 @@ export interface EditContextProps {
 export function EditContext(props: EditContextProps) {
   function send(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    props.submitContext(props.query, context ?? props.context);
+    props.submitContext(props.query, context);
   }
 
-  const [context, setContext] = useState<string | undefined>();
+  const [context, setContext] = useState<string>(props.context);
 
   return (
     <Box sx={{ my: 4 }}>
       <TextField
         label="Context"
-        defaultValue={props.context}
         value={context}
         fullWidth
         multiline

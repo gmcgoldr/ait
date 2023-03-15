@@ -8,23 +8,12 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import { App } from "./App";
 import { theme } from "./theme";
-import * as Ait from "ait-lib";
-
-const history = Ait.History.load();
-
-addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") {
-    (async () => {
-      history.store();
-    })().catch((x) => console.error(x));
-  }
-});
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App history={history} />
+      <App />
     </ThemeProvider>
   </React.StrictMode>
 );
