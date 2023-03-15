@@ -25,6 +25,10 @@ export function App(props: AppProps) {
   let [response, setResponse] = useState<string>();
   let [token, setToken] = useState<string>();
 
+  function updateMessages() {
+    setMessages(history.get_last_messages(2));
+  }
+
   function onExit() {
     if (document.visibilityState === "hidden") {
       (async () => {
@@ -34,7 +38,6 @@ export function App(props: AppProps) {
   }
 
   useEffect(() => {
-    setMessages(history.get_last_messages(4));
     addEventListener("visibilitychange", onExit);
     return function cleanup() {
       removeEventListener("visibilitychange", onExit);
@@ -42,7 +45,7 @@ export function App(props: AppProps) {
   }, []);
 
   useEffect(() => {
-    setMessages(history.get_last_messages(4));
+    updateMessages();
   }, [history]);
 
   function submitQuery(query: string) {
@@ -68,7 +71,7 @@ export function App(props: AppProps) {
   function submitResponse(query: Embedded, context: string, response: string) {
     (async () => {
       await history.add_experience(query.text, response, query.embedding);
-      setMessages(history.get_last_messages(4));
+      updateMessages();
       setResponse(undefined);
       setContext(undefined);
       setQuery(undefined);

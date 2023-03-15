@@ -22,7 +22,6 @@ export function WriteQuery(props: WriteQueryProps) {
         label="Query"
         fullWidth
         multiline
-        rows={4}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

@@ -5,30 +5,8 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import Avatar from "@mui/material/Avatar";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import PersonIcon from "@mui/icons-material/Person";
-import { Divider } from "@mui/material";
-
-interface MessageItemProps {
-  messageType: MessageType;
-  messageValue: string;
-}
-
-function MessageItem(props: MessageItemProps) {
-  return (
-    <>
-      <ListItem alignItems="flex-start">
-        <ListItemAvatar>
-          <Avatar>{iconFromType(props.messageType)}</Avatar>
-        </ListItemAvatar>
-        <ListItemText primary={props.messageValue} />
-      </ListItem>
-      <Divider variant="inset" component="li" />
-    </>
-  );
-}
-
-export interface ComposeMessageProps {
-  messages: [string, string][];
-}
+import ReactMarkdown from "react-markdown";
+import { Box, Container, Divider } from "@mui/material";
 
 type MessageType = "query" | "response";
 
@@ -40,6 +18,36 @@ function iconFromType(messageType: MessageType): React.ReactNode {
   }
 }
 
+interface MessageItemProps {
+  messageType: MessageType;
+  messageValue: string;
+}
+
+function MessageItem(props: MessageItemProps) {
+  return (
+    <Box sx={{ display: "flex", borderRadius: 2, boxShadow: 2, my: 2 }}>
+      <Avatar sx={{ m: 1 }}>{iconFromType(props.messageType)}</Avatar>
+      <Box
+        sx={{
+          alignSelf: "center",
+          "& :first-child": {
+            marginTop: "0!important",
+          },
+          "& :last-child": {
+            marginBottom: "0!important",
+          },
+        }}
+      >
+        <ReactMarkdown>{props.messageValue}</ReactMarkdown>
+      </Box>
+    </Box>
+  );
+}
+
+export interface ComposeMessageProps {
+  messages: [string, string][];
+}
+
 export function MessageHistory(props: ComposeMessageProps) {
   const history: [MessageType, string][] = [];
 
@@ -49,7 +57,7 @@ export function MessageHistory(props: ComposeMessageProps) {
   }
 
   return (
-    <List>
+    <>
       {history.map(([messageType, messageValue], index) => (
         <MessageItem
           key={index}
@@ -57,6 +65,6 @@ export function MessageHistory(props: ComposeMessageProps) {
           messageValue={messageValue}
         />
       ))}
-    </List>
+    </>
   );
 }
