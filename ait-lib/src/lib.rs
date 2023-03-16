@@ -11,9 +11,10 @@ mod embedding;
 mod experience;
 mod gpt;
 mod history;
+mod history_wasm;
 mod utils;
 
-pub use history::History;
+pub use history_wasm::History;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

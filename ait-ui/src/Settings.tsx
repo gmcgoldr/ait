@@ -1,7 +1,8 @@
 import TextField from "@mui/material/TextField";
-import { Button, FormGroup } from "@mui/material";
-import { useState } from "react";
+import { Button, IconButton, InputAdornment } from "@mui/material";
+import React, { useState } from "react";
 import { SetState } from "./utils";
+import KeyboardReturnIcon from "@mui/icons-material/KeyboardReturn";
 import Grid from "@mui/material/Unstable_Grid2";
 
 export interface SettingsProps {
@@ -10,7 +11,9 @@ export interface SettingsProps {
 }
 
 export function Settings(props: SettingsProps) {
-  function useToken(e: React.MouseEvent<HTMLButtonElement>) {
+  function useToken(
+    e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent
+  ) {
     e.preventDefault();
     if (token) props.setToken(token);
   }
@@ -24,24 +27,30 @@ export function Settings(props: SettingsProps) {
 
   return (
     <>
-      <Grid container spacing={2}>
-        <Grid xs alignItems={"center"} style={{ display: "flex" }}>
-          <TextField
-            label="OpenAI Token"
-            value={token}
-            fullWidth
-            onChange={(e) => setToken(e.target.value)}
-            inputProps={{
-              sx: { fontFamily: "monospace", color: "text.secondary" },
-            }}
-          />
-        </Grid>
-        <Grid xs={"auto"} alignItems={"center"} style={{ display: "flex" }}>
-          <Button variant="contained" onClick={useToken}>
-            Use token
-          </Button>
-        </Grid>
-      </Grid>
+      <TextField
+        label="OpenAI API token"
+        value={token}
+        fullWidth
+        onChange={(e) => setToken(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key != "Enter") return;
+          useToken(e);
+        }}
+        InputProps={{
+          sx: { fontFamily: "monospace", color: "text.secondary" },
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                aria-label="toggle password visibility"
+                onClick={useToken}
+                edge="end"
+              >
+                <KeyboardReturnIcon />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
       <Button variant="contained" sx={{ my: 2 }} onClick={resetHistory}>
         Reset History
       </Button>

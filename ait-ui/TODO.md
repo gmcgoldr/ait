@@ -1,0 +1,11 @@
+
+- critique
+  - does anything need to be fact checked
+  - does the response make sense
+  - does the response need a follow up
+- reading to learn
+  - what can I learn from the following passage
+- learnable reward function
+  - binary tree
+  - stay on node, follow left, or follow right with prob. proportional to similarity
+  - re-arrange nodes to match desired contexts

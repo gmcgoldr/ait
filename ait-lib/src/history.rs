@@ -1,17 +1,12 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use linked_hash_map::{Entry, LinkedHashMap};
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::iter::FromIterator;
+use tap::Pipe;
+use wasm_bindgen::prelude::*;
 
 use crate::experience::Experience;
 use crate::gpt::{GptEmbedding, EMBED_DIMS};
 use crate::utils::{new_text_id, TextId};
-use base64::{engine::general_purpose, Engine};
-use js_sys::{Array, JsString, Uint8Array};
-use serde::{Deserialize, Serialize};
-use tap::Pipe;
-use wasm_bindgen::prelude::*;
-use web_sys::window;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -39,126 +34,79 @@ type Result<T> = core::result::Result<T, Error>;
 
 type GptExperience = Experience<EMBED_DIMS>;
 
-#[wasm_bindgen]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IdExperience {
+    pub text_id: TextId,
+    pub experience: GptExperience,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct History {
-    experiences: Vec<GptExperience>,
-    text_id_to_idx: HashMap<TextId, usize>,
+    experiences: LinkedHashMap<TextId, IdExperience>,
+    next_rank: u64,
 }
 
 impl History {
-    fn new() -> History {
+    pub fn new() -> History {
         History {
-            experiences: Vec::new(),
-            text_id_to_idx: HashMap::new(),
+            experiences: LinkedHashMap::new(),
+            next_rank: 0,
         }
     }
-}
 
-fn text_id_from_js(text_id_js: &Uint8Array) -> Result<[u8; 32]> {
-    let mut text_id = [0u8; 32];
-    if text_id_js.length() as usize != text_id.len() {
-        Err(Error::CantAccessExperience)?;
-    }
-    text_id_js.copy_to(&mut text_id);
-    Ok(text_id)
-}
-
-#[wasm_bindgen]
-impl History {
-    pub fn store(&self) -> Result<String> {
-        let data = rmp_serde::to_vec(self).map_err(|_| Error::CantStoreHistory)?;
-        let data = general_purpose::STANDARD_NO_PAD.encode(data);
-        window()
-            .and_then(|x| x.local_storage().ok())
-            .flatten()
-            .map(|x| x.set_item("history", &data).ok())
-            .flatten()
-            .ok_or(Error::CantStoreHistory)?;
-        Ok(data)
-    }
-
-    pub fn load() -> Result<History> {
-        let data = window()
-            .and_then(|x| x.local_storage().ok())
-            .flatten()
-            .and_then(|x| match x.get_item("history") {
-                Ok(Some(data)) => Some(data),
-                Ok(None) => {
-                    let data = History::new().store();
-                    data.ok()
-                }
-                Err(_) => None,
-            })
-            .ok_or(Error::CantAccessHistory)?;
-        let data = general_purpose::STANDARD_NO_PAD
-            .decode(data)
-            .map_err(|_| Error::CantAccessHistory)?;
-        rmp_serde::from_slice(&data).map_err(|_| Error::CantAccessHistory)
-    }
-
-    pub async fn add_experience(
+    pub async fn push(
         &mut self,
         query: &str,
         response: &str,
-        embedding: Uint8Array,
+        embedding: GptEmbedding,
     ) -> Result<()> {
-        let embedding =
-            GptEmbedding::deserialize(&embedding.to_vec()).map_err(|_| Error::InvalidEmbedding)?;
         let id = new_text_id(&[query, response]);
-        if let Entry::Vacant(entry) = self.text_id_to_idx.entry(id.clone()) {
-            self.experiences.push(Experience::new(
-                query.to_string(),
-                response.to_string(),
-                embedding,
-            ));
-            entry.insert(self.experiences.len());
+        if let Entry::Vacant(entry) = self.experiences.entry(id.clone()) {
+            entry.insert(IdExperience {
+                text_id: id,
+                experience: Experience::new(
+                    query.to_string(),
+                    response.to_string(),
+                    embedding,
+                    self.next_rank,
+                ),
+            });
+            self.next_rank += 1;
         }
         Ok(())
     }
 
-    pub fn update_experience(&mut self, id: &Uint8Array, is_positive: bool) -> Result<()> {
-        let idx = self
-            .text_id_to_idx
-            .get(&text_id_from_js(id)?)
-            .ok_or(Error::CantAccessExperience)?;
-        self.experiences[*idx].increment(is_positive);
-        Ok(())
+    pub fn get(&self, text_id: &TextId) -> Option<&IdExperience> {
+        self.experiences.get(text_id)
     }
 
-    pub fn related_experiences(&self, embedding: &Uint8Array, num: u32) -> Result<JsString> {
-        let embedding =
-            GptEmbedding::deserialize(&embedding.to_vec()).map_err(|_| Error::InvalidEmbedding)?;
-        let mut scored: Vec<(f32, &GptExperience)> = self
+    pub fn remove(&mut self, text_id: &TextId) -> Option<IdExperience> {
+        self.experiences.remove(text_id)
+    }
+
+    pub fn related(&self, embedding: &GptEmbedding, num: u32) -> Result<Vec<&IdExperience>> {
+        let mut scored: Vec<(f32, &IdExperience)> = self
             .experiences
             .iter()
-            .map(|x| (x.embedding().cosine_distance(&embedding), x))
+            .map(|(_, x)| (x.experience.embedding().cosine_distance(&embedding), x))
             .collect();
         scored.sort_by(|a, b| a.0.total_cmp(&b.0));
         let num: usize = num.try_into().map_err(|_| Error::CantAccessExperience)?;
-        let related = scored
+        scored
             .into_iter()
             .take(num)
-            .map(|(_, x)| format!("# Query\n\n{}\n\n# Response\n\n{}", x.query(), x.response()))
-            .collect::<Vec<String>>()
-            .as_slice()
-            .join("\n\n");
-        Ok(JsString::from(related))
+            .map(|(_, x)| x)
+            .collect::<Vec<&IdExperience>>()
+            .pipe(Ok)
     }
 
-    pub fn get_last_messages(&self, num: usize) -> Array {
+    pub fn get_last(&self, num: usize) -> Vec<&IdExperience> {
         self.experiences
             .iter()
+            .map(|(_, x)| x)
             .rev()
             .take(num)
-            .map(|x| {
-                [
-                    x.query().pipe(JsString::from),
-                    x.response().pipe(JsString::from),
-                ]
-                .pipe(Array::from_iter)
-            })
             .rev()
-            .pipe(Array::from_iter)
+            .collect()
     }
 }

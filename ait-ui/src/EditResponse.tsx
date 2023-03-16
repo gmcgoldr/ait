@@ -1,13 +1,14 @@
 import TextField from "@mui/material/TextField";
 import Box from "@mui/material/Box";
-import { Button } from "@mui/material";
 import { useState } from "react";
 import { Embedded } from "./utils";
+import { LoadingButton } from "@mui/lab";
 
 export interface EditResponseProps {
   query: Embedded;
   context: string;
   response: string;
+  loading?: boolean;
   submitResponse: (query: Embedded, context: string, response: string) => void;
 }
 
@@ -29,9 +30,14 @@ export function EditResponse(props: EditResponseProps) {
         rows={4}
         onChange={(e) => setResponse(e.target.value)}
       />
-      <Button variant="contained" sx={{ mt: 1 }} onClick={send}>
-        Submit
-      </Button>
+      <LoadingButton
+        variant="contained"
+        sx={{ mt: 1 }}
+        onClick={send}
+        loading={props.loading}
+      >
+        Store experience
+      </LoadingButton>
     </Box>
   );
 }
