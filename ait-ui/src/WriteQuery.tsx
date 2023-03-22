@@ -4,38 +4,52 @@ import { LoadingButton } from "@mui/lab";
 import { Alert } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
 
+import { Experience } from "./Experiences";
+
 export interface WriteQueryProps {
-  loading?: boolean;
+  query: string | undefined;
+  setQuery: (x: string) => void;
   disabledReason?: string;
-  submitQuery: (message: string) => void;
+  loading?: boolean;
+  buildExperienceFromId: (id: Uint8Array) => Experience;
+  submit: () => void;
+  clearQuery: () => void;
 }
 
 export function WriteQuery(props: WriteQueryProps) {
-  function send(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    if (query) props.submitQuery(query);
-  }
-
-  const [query, setQuery] = useState<string>("");
-
   return (
     <>
       <TextField
         label="Query"
         fullWidth
         multiline
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={props.query ? props.query : ""}
+        onChange={(e) => props.setQuery(e.target.value)}
+        sx={{ mb: 1 }}
       />
-      <Grid container spacing={2} sx={{ mt: 1 }}>
+      <Grid container spacing={2}>
         <Grid xs="auto" display="flex" alignItems="center">
           <LoadingButton
             variant="contained"
-            onClick={send}
+            onClick={(e) => {
+              e.preventDefault();
+              props.submit();
+            }}
             disabled={!!props.disabledReason}
             loading={props.loading}
           >
             Build context
+          </LoadingButton>
+        </Grid>
+        <Grid xs="auto" display="flex" alignItems="center">
+          <LoadingButton
+            variant="contained"
+            onClick={(e) => {
+              e.preventDefault();
+              props.clearQuery();
+            }}
+          >
+            Restart
           </LoadingButton>
         </Grid>
         {!!props.disabledReason ? (

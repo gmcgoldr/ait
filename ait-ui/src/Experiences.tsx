@@ -1,9 +1,15 @@
 import Avatar from "@mui/material/Avatar";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import DeveloperBoardIcon from "@mui/icons-material/DeveloperBoard";
 import PersonIcon from "@mui/icons-material/Person";
-import { Box, Chip, Collapse, Divider } from "@mui/material";
+import { Box, Divider } from "@mui/material";
 import { MarkdownBox } from "./MarkdownBox";
-import React, { ReactHTML, useState } from "react";
+import React from "react";
+
+export interface Experience {
+  id: Uint8Array;
+  query: string;
+  response: string;
+}
 
 interface ExperienceItemProps {
   query: string;
@@ -44,46 +50,34 @@ function ExperienceItem(props: ExperienceItemProps) {
       <Divider variant="fullWidth" />
       <Box sx={{ display: "flex" }}>
         <Avatar sx={{ m: 1 }}>
-          <SmartToyIcon />
+          <DeveloperBoardIcon />
         </Avatar>
-        <MarkdownBox markdown={props.response} />
+        <Box sx={{ my: 1 }}>
+          <MarkdownBox markdown={props.response} />
+        </Box>
       </Box>
     </Box>
   );
 }
 
+export interface ExperienceAndTitle {
+  experience: Experience;
+  title: React.ReactNode;
+}
+
 export interface ExperiencesProps {
-  experiences: [Uint8Array, string, string][];
-  removeExperience: (textId: Uint8Array) => void;
+  experiencesTitles: ExperienceAndTitle[];
 }
 
 export function Experiences(props: ExperiencesProps) {
   return (
     <>
-      {props.experiences.map(([textId, query, response], index) => (
+      {props.experiencesTitles.map(({ experience, title }, index) => (
         <ExperienceItem
           key={index}
-          query={query}
-          response={response}
-          title={
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
-              <Chip
-                label="Forget"
-                color="secondary"
-                variant="outlined"
-                size="small"
-                onClick={(event: React.MouseEvent) => {
-                  event.preventDefault();
-                  props.removeExperience(textId);
-                }}
-              />
-            </Box>
-          }
+          query={experience.query}
+          response={experience.response}
+          title={title}
         />
       ))}
     </>

@@ -33,11 +33,6 @@ impl From<Error> for JsValue {
 type Result<T> = core::result::Result<T, Error>;
 
 #[wasm_bindgen]
-pub fn build_prompt(prompt: &str, context: &str) -> String {
-    format!("{}\n\n# Query\n\n{}# Reply\n\n", context, prompt)
-}
-
-#[wasm_bindgen]
 pub async fn gpt_generate(token: &str, prompt: &str) -> Result<String> {
     gpt::generate(token, prompt).await.map_err(Error::GptError)
 }

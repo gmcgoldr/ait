@@ -1,13 +1,12 @@
 import TextField from "@mui/material/TextField";
 import { Button, IconButton, InputAdornment } from "@mui/material";
-import React, { useState } from "react";
-import { SetState } from "./utils";
+import React, { useEffect, useState } from "react";
 import KeyboardReturnIcon from "@mui/icons-material/KeyboardReturn";
-import Grid from "@mui/material/Unstable_Grid2";
 
 export interface SettingsProps {
-  setToken: SetState<string | undefined>;
-  resetHistory: () => void;
+  token: string | undefined;
+  setToken: (token: string) => void;
+  clearHistory: () => void;
 }
 
 export function Settings(props: SettingsProps) {
@@ -15,15 +14,15 @@ export function Settings(props: SettingsProps) {
     e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent
   ) {
     e.preventDefault();
-    if (token) props.setToken(token);
-  }
-
-  function resetHistory(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    props.resetHistory();
+    props.setToken(token);
   }
 
   const [token, setToken] = useState<string>("");
+
+  useEffect(() => {
+    if (props.token == null) return;
+    setToken(props.token);
+  }, [props.token]);
 
   return (
     <>
@@ -51,8 +50,15 @@ export function Settings(props: SettingsProps) {
           ),
         }}
       />
-      <Button variant="contained" sx={{ my: 2 }} onClick={resetHistory}>
-        Reset History
+      <Button
+        variant="contained"
+        sx={{ my: 2 }}
+        onClick={(e) => {
+          e.preventDefault();
+          props.clearHistory();
+        }}
+      >
+        Clear History
       </Button>
     </>
   );

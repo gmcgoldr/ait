@@ -1,51 +1,30 @@
 import { useEffect, useState } from "react";
-import { WriteQuery } from "./WriteQuery";
-import { EditContext } from "./EditContext";
-import { EditResponse } from "./EditResponse";
+import { WriteQuery, WriteQueryProps } from "./WriteQuery";
+import { EditContext, EditContextProps } from "./EditContext";
+import { EditResponse, EditResponseProps } from "./EditResponse";
 import {
   Alert,
   AppBar,
-  Box,
   Container,
   Snackbar,
   Toolbar,
   Typography,
 } from "@mui/material";
-import { Experiences } from "./Experiences";
-import { Embedded } from "./utils";
-import { Settings } from "./Settings";
-import defaultHistory from "./defaultHistory.json";
+import { Settings, SettingsProps } from "./Settings";
 import * as Ait from "ait-lib";
 
-function bootstrapHistory(): Ait.History {
-  // if (!window.localStorage.getItem("history"))
-  //   window.localStorage.setItem("history", defaultHistory);
-  return Ait.History.load();
-}
+import { buildExperienceFromId, Embedded } from "./utils";
 
-export interface AppProps {}
-
-export function App(props: AppProps) {
-  let [history, setHistory] = useState<Ait.History>(bootstrapHistory());
-  let [experiences, setExperiences] = useState<[Uint8Array, string, string][]>(
-    []
-  );
-  let [query, setQuery] = useState<Embedded>();
-  let [context, setContext] = useState<string>();
+export function App() {
+  let [history, setHistory] = useState<Ait.History>(Ait.History.load());
+  let [query, setQuery] = useState<string>();
+  let [queryEmbedded, setQueryEmbedded] = useState<Embedded>();
+  let [contextIds, setContextIds] = useState<Uint8Array[]>();
   let [response, setResponse] = useState<string>();
   let [token, setToken] = useState<string>();
-  let [processingQuery, setProcessingQuery] = useState<boolean>(false);
-  let [processingContext, setProcessingContext] = useState<boolean>(false);
-  let [processingResponse, setProcessingResponse] = useState<boolean>(false);
   let [errorMessage, setErrorMessage] = useState<string | undefined>();
-
-  function updateMessages() {
-    setExperiences(
-      history
-        .get_last_ids(2)
-        .map((x) => [x, history.get_query(x), history.get_response(x)])
-    );
-  }
+  let [queryLoading, setQueryLoading] = useState<boolean>(false);
+  let [contextLoading, setContextLoading] = useState<boolean>(false);
 
   function onExit() {
     if (document.visibilityState === "hidden") {
@@ -63,74 +42,112 @@ export function App(props: AppProps) {
   }, []);
 
   useEffect(() => {
-    updateMessages();
-  }, [history]);
+    const token = window.localStorage.getItem("token");
+    if (token == null) return;
+    setToken(token);
+  }, []);
 
-  function submitQuery(query: string) {
-    setProcessingQuery(true);
-    (async () => {
-      if (token == null) throw Error("tried to submit without a token");
-      query = query.trim();
-      const embedding = await Ait.gpt_embed(token, query);
-      const context = history
-        .related_ids(embedding, 3)
-        .map((x) => [
-          `# Query\n\n${history.get_query(x)}`,
-          `# Response\n\n${history.get_response(x)}`,
-        ])
-        .flat()
-        .join("\n\n");
-      setQuery({ text: query, embedding });
-      setContext(context);
-    })()
-      .catch((x) => {
-        console.error(x);
-        setErrorMessage("Failed to process query.");
-      })
-      .finally(() => {
-        setProcessingQuery(false);
-      });
-  }
+  let queryDisabledReason = undefined;
+  if (token == null) queryDisabledReason = "No API token has been provided.";
 
-  function submitContext(query: Embedded, context: string) {
-    setProcessingContext(true);
-    (async () => {
-      if (token == null) throw Error("tried to submit without a token");
-      const prompt = Ait.build_prompt(query.text, context);
-      const response = (await Ait.gpt_generate(token, prompt)).trim();
-      setResponse(response);
-    })()
-      .catch((x) => {
-        console.error(x);
-        setErrorMessage("Failed to process context.");
-      })
-      .finally(() => {
-        setProcessingContext(false);
-      });
-  }
-
-  function submitResponse(query: Embedded, context: string, response: string) {
-    setProcessingResponse(true);
-    (async () => {
-      await history.push(query.text, response, query.embedding);
-      updateMessages();
+  const writeQueryProps: WriteQueryProps | undefined = {
+    query,
+    setQuery,
+    disabledReason: queryDisabledReason,
+    loading: queryLoading,
+    buildExperienceFromId: (id) => buildExperienceFromId(id, history),
+    submit: () => {
+      if (!token || !query) return;
+      setQueryLoading(true);
+      (async () => {
+        const embedding = await Ait.gpt_embed(token, query);
+        setQueryEmbedded({ text: query, embedding });
+        setContextIds(history.related_ids(embedding, 128));
+        setResponse(undefined);
+      })()
+        .catch((x) => {
+          console.error(x);
+          setErrorMessage("Unable process query.");
+        })
+        .finally(() => setQueryLoading(false));
+    },
+    clearQuery: () => {
       setResponse(undefined);
-      setContext(undefined);
+      setContextIds(undefined);
+      setQueryEmbedded(undefined);
       setQuery(undefined);
-    })()
-      .catch((x) => {
-        setErrorMessage("Failed to process response.");
-        console.error(x);
-      })
-      .finally(() => {
-        setProcessingResponse(false);
-      });
-  }
+    },
+  };
 
-  function resetHistory() {
-    window.localStorage.removeItem("history");
-    setHistory(bootstrapHistory());
-  }
+  let contextDisabledReason = undefined;
+  if (token == null) contextDisabledReason = "No API token has been provided.";
+  else if (contextIds == null)
+    contextDisabledReason = "Context IDs not generated.";
+
+  const editContextProps: EditContextProps = {
+    contextIds,
+    disabledReason: contextDisabledReason,
+    loading: contextLoading,
+    buildExperienceFromId: (id) => buildExperienceFromId(id, history),
+    submitContext: (contextIds: Uint8Array[]) => {
+      if (token == null) return;
+      if (queryEmbedded == null) return;
+      setContextLoading(true);
+      (async () => {
+        const prompt = [
+          ...contextIds
+            .map((x) => [
+              `# Query\n\n${history.get_query(x)}`,
+              `# Response\n\n${history.get_response(x)}`,
+            ])
+            .flat(),
+          `# Query\n\n${queryEmbedded.text}`,
+          "# Response\n\n",
+        ].join("\n\n");
+        console.info("Prompt:\n\n%s", prompt);
+        const response = (await Ait.gpt_generate(token, prompt)).trim();
+        setResponse(response);
+      })()
+        .catch((x) => {
+          console.error(x);
+          setErrorMessage("Unable generate response.");
+        })
+        .finally(() => setContextLoading(false));
+    },
+  };
+
+  let responseDisabledReason = undefined;
+  if (response == null) responseDisabledReason = "Response not generated.";
+
+  const editResponseProps: EditResponseProps = {
+    response,
+    setResponse,
+    disabledReason: responseDisabledReason,
+    store: () => {
+      if (!queryEmbedded || !response) return;
+      history.push(queryEmbedded.text, response, queryEmbedded.embedding);
+      setQueryEmbedded(undefined);
+      setContextIds(undefined);
+      setResponse(undefined);
+    },
+  };
+
+  const settingsProps: SettingsProps = {
+    token,
+    setToken: (token: string) => {
+      if (!token) {
+        setToken(undefined);
+        window.localStorage.removeItem("token");
+      } else {
+        setToken(token);
+        window.localStorage.setItem("token", token);
+      }
+    },
+    clearHistory: () => {
+      window.localStorage.removeItem("history");
+      setHistory(Ait.History.load());
+    },
+  };
 
   return (
     <>
@@ -164,50 +181,14 @@ export function App(props: AppProps) {
       </Snackbar>
       <Container maxWidth="md">
         <>
-          <h2>Queries</h2>
-          <Experiences
-            experiences={experiences}
-            removeExperience={(textId: Uint8Array) => {
-              history.remove(textId);
-              updateMessages();
-            }}
-          />
-          {query == null ? (
-            <Box sx={{ my: 2 }}>
-              <WriteQuery
-                submitQuery={submitQuery}
-                loading={processingQuery}
-                disabledReason={
-                  token == null ? "No API token has been provided." : undefined
-                }
-              />
-            </Box>
-          ) : null}
-          {query != null &&
-          context != null &&
-          response == null &&
-          token != null ? (
-            <EditContext
-              query={query}
-              context={context}
-              submitContext={submitContext}
-              loading={processingContext}
-              disabledReason={
-                token == null ? "No API token has been provided." : undefined
-              }
-            />
-          ) : null}
-          {query != null && context != null && response != null ? (
-            <EditResponse
-              query={query}
-              context={context}
-              response={response}
-              submitResponse={submitResponse}
-              loading={processingResponse}
-            />
-          ) : null}
+          <h2>Query</h2>
+          <WriteQuery {...writeQueryProps} />
+          <h2>Context</h2>
+          <EditContext {...editContextProps} />
+          <h2>Response</h2>
+          <EditResponse {...editResponseProps} />
           <h2>Settings</h2>
-          <Settings setToken={setToken} resetHistory={resetHistory} />
+          <Settings {...settingsProps} />
         </>
       </Container>
     </>

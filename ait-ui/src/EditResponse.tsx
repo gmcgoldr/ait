@@ -1,43 +1,51 @@
 import TextField from "@mui/material/TextField";
-import Box from "@mui/material/Box";
-import { useState } from "react";
-import { Embedded } from "./utils";
-import { LoadingButton } from "@mui/lab";
+import { useEffect, useState } from "react";
+import { Alert, LoadingButton } from "@mui/lab";
+import Grid from "@mui/material/Unstable_Grid2";
 
 export interface EditResponseProps {
-  query: Embedded;
-  context: string;
-  response: string;
+  response: string | undefined;
+  setResponse: (x: string) => void;
+  disabledReason?: string;
   loading?: boolean;
-  submitResponse: (query: Embedded, context: string, response: string) => void;
+  store: () => void;
 }
 
 export function EditResponse(props: EditResponseProps) {
-  function send(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    props.submitResponse(props.query, props.context, response);
-  }
-
-  const [response, setResponse] = useState<string>(props.response);
-
   return (
-    <Box sx={{ my: 4 }}>
-      <TextField
-        label="Response"
-        value={response}
-        fullWidth
-        multiline
-        rows={4}
-        onChange={(e) => setResponse(e.target.value)}
-      />
-      <LoadingButton
-        variant="contained"
-        sx={{ mt: 1 }}
-        onClick={send}
-        loading={props.loading}
-      >
-        Store experience
-      </LoadingButton>
-    </Box>
+    <>
+      {props.response != null ? (
+        <TextField
+          label="Response"
+          value={props.response ? props.response : ""}
+          fullWidth
+          multiline
+          onChange={(e) => props.setResponse(e.target.value)}
+          sx={{ mb: 1 }}
+        />
+      ) : null}
+      <Grid container spacing={2}>
+        <Grid xs="auto" display="flex" alignItems="center">
+          <LoadingButton
+            variant="contained"
+            onClick={(e) => {
+              e.preventDefault();
+              props.store();
+            }}
+            loading={props.loading}
+            disabled={!!props.disabledReason}
+          >
+            Store experience
+          </LoadingButton>
+        </Grid>
+        {!!props.disabledReason ? (
+          <Grid xs display="flex" alignItems="center">
+            <Alert severity="warning" sx={{ width: "100%" }}>
+              {props.disabledReason}
+            </Alert>
+          </Grid>
+        ) : null}
+      </Grid>
+    </>
   );
 }
