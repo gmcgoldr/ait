@@ -1,5 +1,8 @@
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+use gpt::{ChatCompletionMessage, ChatCompletionMessageRole};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -18,6 +21,8 @@ pub use history_wasm::History;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Array contains incorrect values.")]
+    ArrayError,
     #[error(transparent)]
     GptError(#[from] gpt::Error),
     #[error(transparent)]
@@ -32,9 +37,41 @@ impl From<Error> for JsValue {
 
 type Result<T> = core::result::Result<T, Error>;
 
+#[derive(Debug, Serialize, Deserialize)]
+struct Message {
+    query: String,
+    response: String,
+}
+
 #[wasm_bindgen]
-pub async fn gpt_generate(token: &str, prompt: &str) -> Result<String> {
-    gpt::generate(token, prompt).await.map_err(Error::GptError)
+pub async fn text_complete(token: &str, prompt: &str) -> Result<String> {
+    gpt::text_completion(token, prompt)
+        .await
+        .map_err(Error::GptError)
+}
+
+#[wasm_bindgen]
+pub async fn chat_complete(token: &str, messages: Array) -> Result<String> {
+    let messages: Vec<Message> = messages
+        .iter()
+        .map(serde_wasm_bindgen::from_value)
+        .map(|x| x.ok())
+        .collect::<Option<Vec<Message>>>()
+        .ok_or(Error::ArrayError)?;
+    let mut chat_messages: Vec<ChatCompletionMessage> = Vec::new();
+    for message in messages {
+        chat_messages.push(ChatCompletionMessage {
+            role: ChatCompletionMessageRole::User,
+            content: message.query,
+        });
+        chat_messages.push(ChatCompletionMessage {
+            role: ChatCompletionMessageRole::Assistant,
+            content: message.response,
+        });
+    }
+    gpt::chat_completion(token, chat_messages)
+        .await
+        .map_err(Error::GptError)
 }
 
 #[wasm_bindgen]

@@ -9,8 +9,10 @@ use crate::embedding::Embedding;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("failed to request generation")]
-    InvalidGenerate,
+    #[error("failed to request text completion")]
+    InvalidTextCompletion,
+    #[error("failed to request chat completion")]
+    InvalidChatCompletion,
     #[error("failed to request embedding")]
     InvalidEmbedding,
     #[error("failed to serailize embedding")]
@@ -22,16 +24,22 @@ pub enum Error {
 type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Serialize, Deserialize)]
-enum TextCompletionObjectValue {
-    #[serde(rename = "text_completion")]
-    TextCompletion,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum FinishReason {
     Stop,
     Length,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum ListObjectValue {
+    #[serde(rename = "list")]
+    List,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum TextCompletionObjectValue {
+    #[serde(rename = "text_completion")]
+    TextCompletion,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,9 +69,53 @@ struct TextCompletionRequest<'a> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum ListObjectValue {
-    #[serde(rename = "list")]
-    List,
+enum ChatCompletionObjectValue {
+    #[serde(rename = "chat.completion")]
+    ChatCompletion,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ChatCompletionMessageRole {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "assistant")]
+    Assistant,
+    #[serde(rename = "user")]
+    User,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChatCompletionMessage {
+    pub role: ChatCompletionMessageRole,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ChatCompletionChoice {
+    message: ChatCompletionMessage,
+    finish_reason: FinishReason,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ChatCompletionResponse {
+    object: ChatCompletionObjectValue,
+    choices: Vec<ChatCompletionChoice>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum ChatCompletionModel {
+    #[serde(rename = "gpt-3.5-turbo")]
+    Gpt35Turbot,
+    #[serde(rename = "gpt-3.5-turbo")]
+    Gpt35Turbot0301,
+}
+
+#[derive(Debug, Serialize)]
+#[skip_serializing_none]
+struct ChatCompletionRequest {
+    model: ChatCompletionModel,
+    messages: Vec<ChatCompletionMessage>,
+    max_tokens: Option<u16>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,7 +150,7 @@ struct EmbeddingRequest<'a> {
 }
 
 /// Generate a continuation for the given `prompt`.
-pub async fn generate(token: &str, prompt: &str) -> Result<String> {
+pub async fn text_completion(token: &str, prompt: &str) -> Result<String> {
     reqwest::Client::new()
         .post("https://api.openai.com/v1/completions")
         .bearer_auth(token)
@@ -109,12 +161,45 @@ pub async fn generate(token: &str, prompt: &str) -> Result<String> {
         })
         .send()
         .await
-        .map_err(|_| Error::InvalidGenerate)?
+        .map_err(|_| Error::InvalidTextCompletion)?
         .json::<TextCompletionResponse>()
         .await
         .ok()
         .and_then(|x| x.choices.into_iter().next().map(|x| x.text))
-        .ok_or(Error::InvalidGenerate)?
+        .ok_or(Error::InvalidTextCompletion)?
+        .pipe(Ok)
+}
+
+/// Generate a response for the chat history given by `messages`.
+pub async fn chat_completion(token: &str, messages: Vec<ChatCompletionMessage>) -> Result<String> {
+    let system_message: String = "You am a helpful assistant.".to_string();
+    let messages = {
+        let mut messages = messages;
+        messages.insert(
+            0,
+            ChatCompletionMessage {
+                role: ChatCompletionMessageRole::System,
+                content: system_message,
+            },
+        );
+        messages
+    };
+    reqwest::Client::new()
+        .post("https://api.openai.com/v1/chat/completions")
+        .bearer_auth(token)
+        .json(&ChatCompletionRequest {
+            model: ChatCompletionModel::Gpt35Turbot0301,
+            messages,
+            max_tokens: Some(2048),
+        })
+        .send()
+        .await
+        .map_err(|_| Error::InvalidChatCompletion)?
+        .json::<ChatCompletionResponse>()
+        .await
+        .ok()
+        .and_then(|x| x.choices.into_iter().next().map(|x| x.message.content))
+        .ok_or(Error::InvalidChatCompletion)?
         .pipe(Ok)
 }
 
