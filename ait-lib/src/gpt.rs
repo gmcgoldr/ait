@@ -66,6 +66,7 @@ struct TextCompletionRequest<'a> {
     model: TextCompletionModel,
     prompt: &'a str,
     max_tokens: Option<u16>,
+    temperature: Option<f32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,6 +117,7 @@ struct ChatCompletionRequest {
     model: ChatCompletionModel,
     messages: Vec<ChatCompletionMessage>,
     max_tokens: Option<u16>,
+    temperature: Option<f32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -158,6 +160,7 @@ pub async fn text_completion(token: &str, prompt: &str) -> Result<String> {
             model: TextCompletionModel::GptDavinci003,
             prompt,
             max_tokens: Some(2048),
+            temperature: Some(0.0),
         })
         .send()
         .await
@@ -170,16 +173,21 @@ pub async fn text_completion(token: &str, prompt: &str) -> Result<String> {
         .pipe(Ok)
 }
 
+const SYSTEM_MESSAGE: &'static str = "\
+You are Ait, a helpful AI assistant. \
+You have encyclopedic knowledge of a plethora of online documents. \
+You also have a long term memory of your past interactions.
+";
+
 /// Generate a response for the chat history given by `messages`.
 pub async fn chat_completion(token: &str, messages: Vec<ChatCompletionMessage>) -> Result<String> {
-    let system_message: String = "You am a helpful assistant.".to_string();
     let messages = {
         let mut messages = messages;
         messages.insert(
             0,
             ChatCompletionMessage {
                 role: ChatCompletionMessageRole::System,
-                content: system_message,
+                content: SYSTEM_MESSAGE.to_string(),
             },
         );
         messages
@@ -191,6 +199,7 @@ pub async fn chat_completion(token: &str, messages: Vec<ChatCompletionMessage>) 
             model: ChatCompletionModel::Gpt35Turbot0301,
             messages,
             max_tokens: Some(2048),
+            temperature: Some(0.0),
         })
         .send()
         .await

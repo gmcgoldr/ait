@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
-import { Alert, Box, Button, Chip } from "@mui/material";
+import { Alert, Box, Chip } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
 import { Experiences, Experience } from "./Experiences";
 
@@ -50,6 +50,11 @@ export function EditContext(props: EditContextProps) {
     setRemovedIds((prev) => new Set([...prev, id]));
   }
 
+  useEffect(() => {
+    setNumIds(3);
+    setRemovedIds(new Set());
+  }, [props.contextIds]);
+
   const experiencesTitles =
     contextIds && contextIds.length > 0
       ? contextIds.map((x) => {
@@ -66,13 +71,10 @@ export function EditContext(props: EditContextProps) {
         })
       : undefined;
 
+  const maxNumIds = props.contextIds ? props.contextIds.length : 0;
+
   return (
     <>
-      {contextIds && contextIds.length == 0 ? (
-        <Alert severity="info" sx={{ mb: 1 }}>
-          There are no experiences from which to build the context.
-        </Alert>
-      ) : null}
       {experiencesTitles != null ? (
         <Box sx={{ mb: 1 }}>
           <Experiences experiencesTitles={experiencesTitles} />
@@ -82,11 +84,13 @@ export function EditContext(props: EditContextProps) {
         <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
           <Chip
             label="More context"
+            variant="outlined"
+            color="primary"
             onClick={(e) => {
               e.preventDefault();
               setNumIds((prev) => prev + 1);
             }}
-            disabled={numIds >= contextIds.length}
+            disabled={numIds >= maxNumIds}
           />
         </Box>
       ) : null}

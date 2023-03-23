@@ -13,7 +13,7 @@ import {
 import { Settings, SettingsProps } from "./Settings";
 import * as Ait from "ait-lib";
 
-import { buildExperienceFromId, Embedded } from "./utils";
+import { buildExperienceFromId, Embedded, Message } from "./utils";
 
 export function App() {
   let [history, setHistory] = useState<Ait.History>(Ait.History.load());
@@ -81,8 +81,7 @@ export function App() {
 
   let contextDisabledReason = undefined;
   if (token == null) contextDisabledReason = "No API token has been provided.";
-  else if (contextIds == null)
-    contextDisabledReason = "Context IDs not generated.";
+  else if (contextIds == null) contextDisabledReason = "Context not built.";
 
   const editContextProps: EditContextProps = {
     contextIds,
@@ -94,18 +93,15 @@ export function App() {
       if (queryEmbedded == null) return;
       setContextLoading(true);
       (async () => {
-        const prompt = [
-          ...contextIds
-            .map((x) => [
-              `# Query\n\n${history.get_query(x)}`,
-              `# Response\n\n${history.get_response(x)}`,
-            ])
-            .flat(),
-          `# Query\n\n${queryEmbedded.text}`,
-          "# Response\n\n",
-        ].join("\n\n");
-        console.info("Prompt:\n\n%s", prompt);
-        const response = (await Ait.gpt_generate(token, prompt)).trim();
+        const messages: Message[] = [
+          ...contextIds.map((x) => ({
+            query: history.get_query(x),
+            response: history.get_response(x),
+          })),
+          { query: queryEmbedded.text, response: "" },
+        ];
+        console.info("Messages:\n\n%O", messages);
+        const response = (await Ait.chat_complete(token, messages)).trim();
         setResponse(response);
       })()
         .catch((x) => {

@@ -49,10 +49,10 @@ export function Settings(props: SettingsProps) {
             </InputAdornment>
           ),
         }}
+        sx={{ mb: 1 }}
       />
       <Button
         variant="contained"
-        sx={{ my: 2 }}
         onClick={(e) => {
           e.preventDefault();
           props.clearHistory();

@@ -1,4 +1,3 @@
-import React from "react";
 import * as Ait from "ait-lib";
 
 import { Experience } from "./Experiences";
@@ -6,6 +5,11 @@ import { Experience } from "./Experiences";
 export interface Embedded {
   text: string;
   embedding: Uint8Array;
+}
+
+export interface Message {
+  query: string;
+  response: string;
 }
 
 export function buildExperienceFromId(
