@@ -39,6 +39,7 @@ base64 = "0.21.0"
 js-sys = "0.3.61"
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
 serde-wasm-bindgen = "0.5.0"
+eventsource-stream = "0.2.3"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"

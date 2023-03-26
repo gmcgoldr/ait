@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
-import { WriteQuery, WriteQueryProps } from "./WriteQuery";
-import { EditContext, EditContextProps } from "./EditContext";
-import { EditResponse, EditResponseProps } from "./EditResponse";
-import {
-  Alert,
-  AppBar,
-  Container,
-  Snackbar,
-  Toolbar,
-  Typography,
-} from "@mui/material";
-import { Settings, SettingsProps } from "./Settings";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import * as Ait from "ait-lib";
 
+import { SettingsProps } from "./Settings";
+import { WriteQueryProps } from "./WriteQuery";
+import { EditContextProps } from "./EditContext";
+import { EditResponseProps } from "./EditResponse";
 import { buildExperienceFromId, Embedded, Message } from "./utils";
+import { AppAlertProps } from "./AppAlert";
+import { Query, QueryProps } from "./Query";
 
 export function App() {
   let [history, setHistory] = useState<Ait.History>(Ait.History.load());
@@ -50,7 +45,12 @@ export function App() {
   let queryDisabledReason = undefined;
   if (token == null) queryDisabledReason = "No API token has been provided.";
 
-  const writeQueryProps: WriteQueryProps | undefined = {
+  const appAlertProps: AppAlertProps = {
+    errorMessage,
+    setErrorMessage,
+  };
+
+  const writeQueryProps: WriteQueryProps = {
     query,
     setQuery,
     disabledReason: queryDisabledReason,
@@ -145,48 +145,20 @@ export function App() {
     },
   };
 
-  return (
-    <>
-      <AppBar position="fixed">
-        <Toolbar>
-          <Container maxWidth="md">
-            <Typography variant="h6" sx={{ my: 2 }}>
-              AIT
-            </Typography>
-          </Container>
-        </Toolbar>
-      </AppBar>
-      <Toolbar />
-      <Snackbar
-        open={!!errorMessage}
-        autoHideDuration={6000}
-        onClose={() => {
-          setErrorMessage(undefined);
-        }}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => {
-            setErrorMessage(undefined);
-          }}
-          severity="error"
-          sx={{ boxShadow: 2 }}
-        >
-          {errorMessage}
-        </Alert>
-      </Snackbar>
-      <Container maxWidth="md">
-        <>
-          <h2>Query</h2>
-          <WriteQuery {...writeQueryProps} />
-          <h2>Context</h2>
-          <EditContext {...editContextProps} />
-          <h2>Response</h2>
-          <EditResponse {...editResponseProps} />
-          <h2>Settings</h2>
-          <Settings {...settingsProps} />
-        </>
-      </Container>
-    </>
-  );
+  const queryProps: QueryProps = {
+    appAlertProps,
+    writeQueryProps,
+    editContextProps,
+    editResponseProps,
+    settingsProps,
+  };
+
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <Query {...queryProps} />,
+    },
+  ]);
+
+  return <RouterProvider router={router} />;
 }
