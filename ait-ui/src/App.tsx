@@ -155,7 +155,7 @@ export function App() {
 
   const router = createBrowserRouter([
     {
-      path: "/",
+      path: "/ait/",
       element: <Query {...queryProps} />,
     },
   ]);

@@ -21,6 +21,13 @@ export function Query(props: QueryProps) {
       <AppTitle />
       <AppAlert {...props.appAlertProps} />
       <Container maxWidth="md">
+        <p>
+          Ait is a technical exploration of ideas relating to LLM memory. This
+          exploration is not scientific. This code base is experimental and may
+          not be reliable. See{" "}
+          <a href="https://github.com/gmcgoldr/ait">the repository</a> for more
+          information.
+        </p>
         <h2>Query</h2>
         <WriteQuery {...props.writeQueryProps} />
         <h2>Context</h2>
