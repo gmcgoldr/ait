@@ -10,6 +10,7 @@ export interface Embedded {
 export interface Message {
   query: string;
   response: string;
+  rank: number;
 }
 
 export function buildExperienceFromId(

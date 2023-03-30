@@ -175,8 +175,10 @@ pub async fn text_completion(token: &str, prompt: &str) -> Result<String> {
 
 const SYSTEM_MESSAGE: &'static str = "\
 You are Ait, a helpful AI assistant. \
-You have encyclopedic knowledge of a plethora of online documents. \
-You also have a long term memory of your past interactions.
+You have extensive knowledge of many facts documented on the world wide web. \
+However, you are not able to perfectly recall those facts. \
+When you are unsure about a detail, do not attempt to provide an answer. \
+You instead state that you do not know the answer.\
 ";
 
 /// Generate a response for the chat history given by `messages`.

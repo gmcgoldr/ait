@@ -45,14 +45,16 @@ function ExperienceItem(props: ExperienceItemProps) {
         <Avatar sx={{ m: 1 }}>
           <PersonIcon />
         </Avatar>
-        <MarkdownBox markdown={props.query} />
+        <Box sx={{ m: 1 }}>
+          <MarkdownBox markdown={props.query} />
+        </Box>
       </Box>
       <Divider variant="fullWidth" />
       <Box sx={{ display: "flex" }}>
         <Avatar sx={{ m: 1 }}>
           <DeveloperBoardIcon />
         </Avatar>
-        <Box sx={{ my: 1 }}>
+        <Box sx={{ m: 1 }}>
           <MarkdownBox markdown={props.response} />
         </Box>
       </Box>

@@ -2,25 +2,37 @@ import TextField from "@mui/material/TextField";
 import { LoadingButton } from "@mui/lab";
 import { Alert } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
+import { useEffect, useRef } from "react";
 
 export interface EditResponseProps {
   response: string | undefined;
-  setResponse: (x: string) => void;
   disabledReason?: string;
   loading?: boolean;
-  store: () => void;
+  store: (response: string) => void;
 }
 
 export function EditResponse(props: EditResponseProps) {
+  let inputRef = useRef<HTMLInputElement>();
+  const response = props.response == null ? "" : props.response;
+
+  useEffect(() => {
+    if (inputRef.current == null) return;
+    inputRef.current.value = response;
+  }, []);
+
+  useEffect(() => {
+    if (inputRef.current == null) return;
+    inputRef.current.value = response;
+  }, [props.response]);
+
   return (
     <>
       {props.response != null ? (
         <TextField
           label="Response"
-          value={props.response ? props.response : ""}
+          inputRef={inputRef}
           fullWidth
           multiline
-          onChange={(e) => props.setResponse(e.target.value)}
           sx={{ mb: 1 }}
         />
       ) : null}
@@ -30,7 +42,8 @@ export function EditResponse(props: EditResponseProps) {
             variant="contained"
             onClick={(e) => {
               e.preventDefault();
-              props.store();
+              if (inputRef.current == null) return;
+              props.store(inputRef.current.value);
             }}
             loading={props.loading}
             disabled={!!props.disabledReason}

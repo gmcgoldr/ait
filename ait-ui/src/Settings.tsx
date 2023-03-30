@@ -7,6 +7,7 @@ export interface SettingsProps {
   token: string | undefined;
   setToken: (token: string) => void;
   clearHistory: () => void;
+  resetHistory: () => void;
 }
 
 export function Settings(props: SettingsProps) {
@@ -57,8 +58,18 @@ export function Settings(props: SettingsProps) {
           e.preventDefault();
           props.clearHistory();
         }}
+        sx={{ mr: 1 }}
       >
         Clear History
+      </Button>
+      <Button
+        variant="contained"
+        onClick={(e) => {
+          e.preventDefault();
+          props.resetHistory();
+        }}
+      >
+        Reset History
       </Button>
     </>
   );

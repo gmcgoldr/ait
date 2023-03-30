@@ -1,5 +1,5 @@
 import TextField from "@mui/material/TextField";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Alert } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
@@ -8,32 +8,44 @@ import { Experience } from "./Experiences";
 
 export interface WriteQueryProps {
   query: string | undefined;
-  setQuery: (x: string) => void;
   disabledReason?: string;
   loading?: boolean;
   buildExperienceFromId: (id: Uint8Array) => Experience;
-  submit: () => void;
+  submit: (query: string) => void;
   clearQuery: () => void;
 }
 
 export function WriteQuery(props: WriteQueryProps) {
+  let inputRef = useRef<HTMLInputElement>();
+  const query = props.query == null ? "" : props.query;
+
+  useEffect(() => {
+    if (inputRef.current == null) return;
+    inputRef.current.value = query;
+  }, []);
+
+  useEffect(() => {
+    if (inputRef.current == null) return;
+    inputRef.current.value = query;
+  }, [props.query]);
+
   return (
     <>
       <TextField
         label="Query"
         fullWidth
         multiline
-        value={props.query ? props.query : ""}
-        onChange={(e) => props.setQuery(e.target.value)}
+        inputRef={inputRef}
         sx={{ mb: 1 }}
       />
-      <Grid container spacing={2}>
+      <Grid container spacing={1}>
         <Grid xs="auto" display="flex" alignItems="center">
           <LoadingButton
             variant="contained"
             onClick={(e) => {
               e.preventDefault();
-              props.submit();
+              if (inputRef.current == null) return;
+              props.submit(inputRef.current.value);
             }}
             disabled={!!props.disabledReason}
             loading={props.loading}

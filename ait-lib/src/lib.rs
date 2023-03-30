@@ -11,7 +11,6 @@ use gpt::{ChatCompletionMessage, ChatCompletionMessageRole};
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 mod embedding;
-mod experience;
 mod gpt;
 mod history;
 mod history_wasm;
@@ -41,6 +40,7 @@ type Result<T> = core::result::Result<T, Error>;
 struct Message {
     query: String,
     response: String,
+    rank: u64,
 }
 
 #[wasm_bindgen]
