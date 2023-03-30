@@ -29,6 +29,22 @@ export function App() {
     }
   }
 
+  function clearHistory() {
+    removeEventListener("visibilitychange", storeHistory);
+    window.localStorage.removeItem("ait_history");
+    setResponse(undefined);
+    setContextIds(undefined);
+    setHistory(Ait.History.load());
+  }
+
+  function resetHistory() {
+    removeEventListener("visibilitychange", storeHistory);
+    window.localStorage.setItem("ait_history", DEFAULT_HISTORY);
+    setResponse(undefined);
+    setContextIds(undefined);
+    setHistory(Ait.History.load());
+  }
+
   useEffect(() => {
     addEventListener("visibilitychange", storeHistory);
     return function cleanup() {
@@ -40,6 +56,11 @@ export function App() {
     const token = window.localStorage.getItem("ait_token");
     if (token == null) return;
     setToken(token);
+  }, []);
+
+  useEffect(() => {
+    if (window.localStorage.getItem("ait_history") != null) return;
+    resetHistory();
   }, []);
 
   let queryDisabledReason = undefined;
@@ -146,20 +167,8 @@ export function App() {
         window.localStorage.setItem("ait_token", token);
       }
     },
-    clearHistory: () => {
-      removeEventListener("visibilitychange", storeHistory);
-      window.localStorage.removeItem("ait_history");
-      setResponse(undefined);
-      setContextIds(undefined);
-      setHistory(Ait.History.load());
-    },
-    resetHistory: () => {
-      removeEventListener("visibilitychange", storeHistory);
-      window.localStorage.setItem("ait_history", DEFAULT_HISTORY);
-      setResponse(undefined);
-      setContextIds(undefined);
-      setHistory(Ait.History.load());
-    },
+    clearHistory,
+    resetHistory,
   };
 
   const queryProps: QueryProps = {
